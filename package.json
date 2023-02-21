@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "cli-color": "^2.0.3",
+    "create-readme": "^2.1.3",
     "express": "^4.18.2",
     "mysql": "^2.18.1"
   },
