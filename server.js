@@ -82,9 +82,9 @@ app.get("/api/person/:id", (req, res, next) => {
 
 //******************** inserting data into database person*****************************/
 
-app.post("/api/person", (req, res) => {
-  const person = req.body;
-
+app.post("/api/person", (req, res, next) => {
+  var person = req.body.data[0];
+  // console.log(person.Name);
   if (!person) {
     return res.status(400).json({
       error: true,
@@ -93,10 +93,8 @@ app.post("/api/person", (req, res) => {
     });
   }
   // ${person.personId} personId,
-  // (Name, Email, Pan, Mobile, Aadhar) VALUES('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}')`,
   dbconnect.query(
-    "INSERT INTO person SET ?",
-    person,
+    `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar) VALUES ('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}')`,
     (error, results, fields) => {
       if (error) {
         return res.status(403).json({
@@ -109,6 +107,71 @@ app.post("/api/person", (req, res) => {
         error: false,
         message: "User create successfully!!",
         data: `Person Id ${results.insertId} inserted`,
+      });
+    }
+  );
+});
+
+//*********** Delete data fropm the databases *******************************************
+
+app.delete("/api/person/:id", (req, res, next) => {
+  const id = req.params.id;
+  // console.log("hiiiiiiii----", id);
+  if (!id) {
+    return res.status(400).json({
+      error: true,
+      message: "Please provide User Id",
+      data: null,
+    });
+  }
+
+  dbconnect.query(
+    "Delete from person where personId = ?",
+    [id],
+    (error, results, feilds) => {
+      if (error) {
+        return res.status(403).json({
+          error: true,
+          message: error.message,
+          data: null,
+        });
+      }
+      return res.status(200).json({
+        error: false,
+        message: "Person Deleted Successfully",
+      });
+    }
+  );
+});
+
+//***************************** Update data of particular feilds *******************************************
+
+app.put("/api/person/:id", (req, res, next) => {
+  const id = req.params.id;
+  console.log(id);
+  console.log("data---", req.body);
+  var person = req.body.data[0];
+  console.log(person);
+  if (!id || !person) {
+    return res.status(400).json({
+      error: true,
+      message: "Please provide person & person id",
+      data: null,
+    });
+  }
+  dbconnect.query(
+    `UPDATE person SET Name='${person.Name}', Email='${person.Email}', Pan='${person.Pan}',Mobile='${person.Mobile}',Aadhar='${person.Aadhar}' WHERE personId = ${id}`,
+    (error, results, feilds) => {
+      if (error) {
+        return res.status(403).json({
+          error: true,
+          message: error.message,
+          data: null,
+        });
+      }
+      return res.status(200).json({
+        error: false,
+        message: "User Update Successfully!!",
       });
     }
   );
