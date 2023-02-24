@@ -3,12 +3,16 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const color = require("cli-color");
 const mysql = require("mysql");
+const moment = require("moment");
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// console.log("hiiiii", date);
+// console.log("curr_time", curr_time);
 
 // app.listen(3500, () => {
 //   console.log(color.white("Server Connected!!!"));
@@ -25,26 +29,29 @@ dbconnect.connect(() => console.log(color.white("Database Connected")));
 
 // ******************** Testing the home page that :- it gives output or not
 app.get("/", (req, res, next) => {
-  res.send("Testing............................");
+  res.send("Testing............................", date);
 });
 
 //*********************** getting all the data from  the table ***************************
 
 app.get("/api/person", (req, res, next) => {
-  dbconnect.query("select * from person", (error, result) => {
-    if (error) {
-      return res.send({
-        error: true,
-        message: error.sqlMessage,
-        data: null,
+  dbconnect.query(
+    "select * from person where isDeleted='N'",
+    (error, result) => {
+      if (error) {
+        return res.send({
+          error: true,
+          message: error.sqlMessage,
+          data: null,
+        });
+      }
+      res.status(200).json({
+        status: true,
+        message: "User fetched successfully!!",
+        data: result,
       });
     }
-    res.status(200).json({
-      status: true,
-      message: "User fetched successfully!!",
-      data: result,
-    });
-  });
+  );
 });
 
 //***************  getting particular data from the sql ************************
@@ -59,7 +66,7 @@ app.get("/api/person/:id", (req, res, next) => {
     });
   }
   dbconnect.query(
-    "select * from person where personId =  ?",
+    "select * from person where personId =  ? AND isDeleted='N' ",
     [id],
     (error, result) => {
       if (error) {
@@ -84,6 +91,8 @@ app.get("/api/person/:id", (req, res, next) => {
 
 app.post("/api/person", (req, res, next) => {
   var person = req.body.data[0];
+  var curr_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
+  console.log(curr_time);
   // console.log(person.Name);
   if (!person) {
     return res.status(400).json({
@@ -94,7 +103,7 @@ app.post("/api/person", (req, res, next) => {
   }
   // ${person.personId} personId,
   dbconnect.query(
-    `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar) VALUES ('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}')`,
+    `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar, Created_Time, Updated_Time) VALUES ('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}', '${curr_time}', '${curr_time}')`,
     (error, results, fields) => {
       if (error) {
         return res.status(403).json({
@@ -116,7 +125,7 @@ app.post("/api/person", (req, res, next) => {
 
 app.delete("/api/person/:id", (req, res, next) => {
   const id = req.params.id;
-  // console.log("hiiiiiiii----", id);
+  console.log("hiiiiiiii deleted----", id);
   if (!id) {
     return res.status(400).json({
       error: true,
@@ -126,7 +135,7 @@ app.delete("/api/person/:id", (req, res, next) => {
   }
 
   dbconnect.query(
-    "Delete from person where personId = ?",
+    "UPDATE person SET isDeleted = 'Y' WHERE personId = ?",
     [id],
     (error, results, feilds) => {
       if (error) {
@@ -148,10 +157,12 @@ app.delete("/api/person/:id", (req, res, next) => {
 
 app.put("/api/person/:id", (req, res, next) => {
   const id = req.params.id;
-  console.log(id);
-  console.log("data---", req.body);
+  // console.log(id);
+  // console.log("data---", req.body);
   var person = req.body.data[0];
-  console.log(person);
+  // console.log(person);
+  var person = req.body.data[0];
+  var updated_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
   if (!id || !person) {
     return res.status(400).json({
       error: true,
@@ -160,7 +171,7 @@ app.put("/api/person/:id", (req, res, next) => {
     });
   }
   dbconnect.query(
-    `UPDATE person SET Name='${person.Name}', Email='${person.Email}', Pan='${person.Pan}',Mobile='${person.Mobile}',Aadhar='${person.Aadhar}' WHERE personId = ${id}`,
+    `UPDATE person SET Name='${person.Name}', Email='${person.Email}', Pan='${person.Pan}',Mobile='${person.Mobile}',Aadhar='${person.Aadhar}',Updated_Time='${updated_time}' WHERE personId = ${id}`,
     (error, results, feilds) => {
       if (error) {
         return res.status(403).json({
