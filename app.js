@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const color = require("cli-color");
 const mysql = require("mysql");
 const moment = require("moment");
+const { body, validationResult } = require("express-validator");
 
 const app = express();
 
@@ -87,39 +88,87 @@ app.get("/api/person/:id", (req, res, next) => {
   );
 });
 
-//******************** inserting data into database person*****************************/
+// var regex = /([A-Z]){5}([0-9]){4}([A-Z]){1}$/; pan card validation
 
-app.post("/api/person", (req, res, next) => {
-  var person = req.body.data[0];
-  var curr_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
-  console.log(curr_time);
-  // console.log(person.Name);
-  if (!person) {
-    return res.status(400).json({
-      error: true,
-      message: "Please provide person",
-      data: null,
-    });
-  }
-  // ${person.personId} personId,
-  dbconnect.query(
-    `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar, Created_Time, Updated_Time) VALUES ('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}', '${curr_time}', '${curr_time}')`,
-    (error, results, fields) => {
-      if (error) {
-        return res.status(403).json({
-          error: true,
-          message: error.sqlMessage,
-          data: null,
+//******************** POST inserting data into database person*****************************/
+
+app.post(
+  "/api/person",
+
+  body("Name").isLength({ max: 50, min: 3 }).withMessage("Enter a  valid Name"),
+  body("Email").isEmail().isLength({ max: 50 }),
+
+  body("Pan", "Enter a valid Pan Number").matches(
+    /^([A-Z]){5}([0-9]){4}([A-Z]){1}$/,
+    "i"
+  ),
+  body("Aadhar")
+    .isLength(12)
+    .withMessage("Enter 12 digit valid Aadhar card Number"),
+  body("Mobile")
+    .isLength({
+      max: 13,
+      min: 10,
+    })
+    .withMessage("Enter 10 digit Mobile Number width +91"),
+
+  (req, res) => {
+    // var person = req.body.data[0];
+    // const patternEmail = /^[a-z0-9](\.?[a-z0-9]){5,}@g(oogle)?mail\.com$/;
+    // const patternPan = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    // const patternMobile = /^[+]{1}[9]{1}[1]{1}[9876][0-9]{9}$/;
+    // const patternAadhar = /^[0-9]{12}$/;
+
+    // if (person.Name == "") {
+    //   return res.send("Enter Name");
+    // }
+    // if (!person.Email.match(patternEmail)) {
+    //   return res.send("Enter valid email");
+    // }
+    // if (!person.Pan.match(patternPan)) {
+    //   return res.send("Enter Valid Pan Number");
+    // }
+    // if (!person.Mobile.match(patternMobile)) {
+    //   return res.send("Enter Valid 10 digit mobile Number using +91");
+    // }
+    // if (!person.Aadhar.match(patternAadhar)) {
+    //   return res.send("Enter Valid 12 digit  Aadhar Card Number");
+    // }
+
+    const errors = validationResult(req);
+    // console.log(errors);
+    // console.log(req.body);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    var person = req.body;
+    var curr_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
+
+    // console.log(curr_time);
+    // console.log(person.Name);
+
+    // ${person.personId} personId,
+
+    dbconnect.query(
+      `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar, Created_Time, Updated_Time) VALUES ('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}', '${curr_time}', '${curr_time}')`,
+      (error, results, fields) => {
+        if (error) {
+          return res.status(403).json({
+            error: true,
+            message: error.sqlMessage,
+            data: null,
+          });
+        }
+        return res.status(201).json({
+          error: false,
+          message: "User create successfully!!",
+          data: `Person Id ${results.insertId} inserted`,
         });
       }
-      return res.status(201).json({
-        error: false,
-        message: "User create successfully!!",
-        data: `Person Id ${results.insertId} inserted`,
-      });
-    }
-  );
-});
+    );
+  }
+);
 
 //*********** Delete data fropm the databases *******************************************
 
