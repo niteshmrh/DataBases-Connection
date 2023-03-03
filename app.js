@@ -36,8 +36,13 @@ app.get("/", (req, res, next) => {
 //*********************** getting all the data from  the table ***************************
 
 app.get("/api/person", (req, res, next) => {
+  console.log(req.query);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const skip = (page - 1) * limit;
+
   dbconnect.query(
-    "select * from person where isDeleted='N'",
+    `select * from person where isDeleted='N' limit ${limit} offset ${skip}`,
     (error, result) => {
       if (error) {
         return res.send({
@@ -46,6 +51,30 @@ app.get("/api/person", (req, res, next) => {
           data: null,
         });
       }
+      res.status(200).json({
+        status: true,
+        message: "User fetched successfully!!1",
+        data: result,
+      });
+    }
+  );
+});
+
+//*************** Getting total Number of entyies in DataBase ************************* */
+
+app.get("/api/person/count/users", (req, res) => {
+  // console.log("count-----");
+  dbconnect.query(
+    "select count(*) as length from person where isDeleted='N'",
+    (error, result) => {
+      if (error) {
+        return res.status(403).json({
+          error: true,
+          message: error.sqlMessage,
+          data: null,
+        });
+      }
+
       res.status(200).json({
         status: true,
         message: "User fetched successfully!!",
@@ -81,7 +110,7 @@ app.get("/api/person/:id", (req, res, next) => {
 
       res.status(200).json({
         status: true,
-        message: "User fetched successfully!!",
+        message: "User fetched successfully!!2",
         data: result,
       });
     }
@@ -111,7 +140,7 @@ app.post(
       min: 10,
     })
     .withMessage("Enter 10 digit Mobile Number width +91"),
-
+  // body("Photo").is.withMessage("Enter Photo as Jpg/Jpeg"),
   (req, res) => {
     // var person = req.body.data[0];
     // const patternEmail = /^[a-z0-9](\.?[a-z0-9]){5,}@g(oogle)?mail\.com$/;
@@ -134,15 +163,18 @@ app.post(
     // if (!person.Aadhar.match(patternAadhar)) {
     //   return res.send("Enter Valid 12 digit  Aadhar Card Number");
     // }
-
+    // const { Photo } = req.files;
     const errors = validationResult(req);
+    // console.log(Photo);
     // console.log(errors);
-    // console.log(req.body);
+    console.log(req);
+
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     var person = req.body;
+    console.log("photo-----", person);
     var curr_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
 
     // console.log(curr_time);
@@ -170,7 +202,7 @@ app.post(
   }
 );
 
-//*********** Delete data fropm the databases *******************************************
+//*********** Delete data from the databases *******************************************
 
 app.delete("/api/person/:id", (req, res, next) => {
   const id = req.params.id;
@@ -204,14 +236,72 @@ app.delete("/api/person/:id", (req, res, next) => {
 
 //***************************** Update data of particular feilds *******************************************
 
-app.put("/api/person/:id", (req, res, next) => {
+app.put(
+  "/api/person/:id",
+  body("Name").isLength({ max: 50, min: 3 }).withMessage("Enter a  valid Name"),
+  body("Email").isEmail().isLength({ max: 50 }),
+
+  body("Pan", "Enter a valid Pan Number").matches(
+    /^([A-Z]){5}([0-9]){4}([A-Z]){1}$/,
+    "i"
+  ),
+  body("Aadhar")
+    .isLength(12)
+    .withMessage("Enter 12 digit valid Aadhar card Number"),
+  body("Mobile")
+    .isLength({
+      max: 13,
+      min: 10,
+    })
+    .withMessage("Enter 10 digit Mobile Number width +91"),
+
+  (req, res) => {
+    const errors = validationResult(req);
+    // console.log(errors);
+    // console.log(req.body);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    // console.log(id);
+    console.log("data---", req.body);
+    const id = req.params.id;
+    // var person = req.body;
+    // console.log(person);
+    var person = req.body;
+    var updated_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
+
+    if (!id || !person) {
+      return res.status(400).json({
+        error: true,
+        message: "Please provide person & person id",
+        data: null,
+      });
+    }
+    dbconnect.query(
+      `UPDATE person SET Name='${person.Name}', Email='${person.Email}', Pan='${person.Pan}',Mobile='${person.Mobile}',Aadhar='${person.Aadhar}',Updated_Time='${updated_time}' WHERE personId = ${id}`,
+      (error, results, feilds) => {
+        if (error) {
+          return res.status(403).json({
+            error: true,
+            message: error.message,
+            data: null,
+          });
+        }
+        return res.status(200).json({
+          error: false,
+          message: "User Update Successfully!!",
+        });
+      }
+    );
+  }
+);
+
+//***************** Uploading photos in the DataBase using Post Method ******************************** */
+
+app.put("/api/person/camera/:id", (req, res) => {
   const id = req.params.id;
-  // console.log(id);
-  // console.log("data---", req.body);
-  var person = req.body.data[0];
-  // console.log(person);
-  var person = req.body.data[0];
-  var updated_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
+  var person = req.body;
+  console.log("id---", id);
   if (!id || !person) {
     return res.status(400).json({
       error: true,
@@ -219,9 +309,11 @@ app.put("/api/person/:id", (req, res, next) => {
       data: null,
     });
   }
+  var updated_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
+
   dbconnect.query(
-    `UPDATE person SET Name='${person.Name}', Email='${person.Email}', Pan='${person.Pan}',Mobile='${person.Mobile}',Aadhar='${person.Aadhar}',Updated_Time='${updated_time}' WHERE personId = ${id}`,
-    (error, results, feilds) => {
+    `UPDATE person SET Photo='${person.Photo}',Updated_Time='${updated_time}' WHERE personId = ${id}`,
+    (error, results, fields) => {
       if (error) {
         return res.status(403).json({
           error: true,
@@ -229,6 +321,7 @@ app.put("/api/person/:id", (req, res, next) => {
           data: null,
         });
       }
+
       return res.status(200).json({
         error: false,
         message: "User Update Successfully!!",
