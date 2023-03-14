@@ -384,7 +384,7 @@ app.post("/api/person/download", (req, res) => {
     const browser = await puppeteer.launch();
     const webpage = await browser.newPage();
     await webpage.goto(url, {
-      waitUntil: "networkidle2",
+      waitUntil: "networkidle0",
     });
     await webpage
       .pdf({
@@ -395,9 +395,9 @@ app.post("/api/person/download", (req, res) => {
         landscape: false,
         margin: {
           top: "10px",
-          bottom: "10px",
-          left: "5px",
-          right: "5px",
+          bottom: "5px",
+          left: "2px",
+          right: "2px",
         },
       })
       .then(() => {
