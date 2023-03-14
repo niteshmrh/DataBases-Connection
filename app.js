@@ -4,6 +4,9 @@ const bodyParser = require("body-parser");
 const color = require("cli-color");
 const mysql = require("mysql");
 const moment = require("moment");
+// const multer = require("multer");
+const puppeteer = require("puppeteer");
+
 const { body, validationResult } = require("express-validator");
 
 const app = express();
@@ -12,9 +15,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// app.set("view engin", "ejs");
 // console.log("hiiiii", date);
 // console.log("curr_time", curr_time);
-
 // app.listen(3500, () => {
 //   console.log(color.white("Server Connected!!!"));
 // });
@@ -29,9 +32,40 @@ const dbconnect = mysql.createConnection({
 dbconnect.connect(() => console.log(color.white("Database Connected")));
 
 // ******************** Testing the home page that :- it gives output or not
+
 app.get("/", (req, res, next) => {
-  res.send("Testing............................", date);
+  res.send("Testing............................");
 });
+
+//************** multer ******************************** */
+
+// const storage = multer.diskStorage({
+//   destination: (req, res, cb) => {
+//     cb(null, "/");
+//   },
+//   filename: (req, file, cb) => {
+//     console.log(file);
+//     cb(null, Date.now() + this.path.extname(file.Images.orignalname));
+//   },
+// });
+
+// const upload = multer({ storage: storage });
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "Images/");
+//   },
+//   filename: function (req, file, cb) {
+//     console.log("filessss", file);
+//     // return;
+//     // const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+//     let myfilename = Date.now() + file.fieldname + "-" + file.originalname;
+//     req.body.myfilename = myfilename;
+//     cb(null, myfilename);
+//   },
+// });
+
+// const upload = multer({ storage: storage });
 
 //*********************** getting all the data from  the table ***************************
 
@@ -107,6 +141,7 @@ app.get("/api/person/:id", (req, res, next) => {
         });
       }
       console.log(result);
+      // console.log("------------get method", result.Name);
 
       res.status(200).json({
         status: true,
@@ -120,10 +155,11 @@ app.get("/api/person/:id", (req, res, next) => {
 // var regex = /([A-Z]){5}([0-9]){4}([A-Z]){1}$/; pan card validation
 
 //******************** POST inserting data into database person*****************************/
+// upload.single("Photo"),
+// , '${req.body.myfilename}'
 
 app.post(
   "/api/person",
-
   body("Name").isLength({ max: 50, min: 3 }).withMessage("Enter a  valid Name"),
   body("Email").isEmail().isLength({ max: 50 }),
 
@@ -142,6 +178,7 @@ app.post(
     .withMessage("Enter 10 digit Mobile Number width +91"),
   // body("Photo").is.withMessage("Enter Photo as Jpg/Jpeg"),
   (req, res) => {
+    // return;
     // var person = req.body.data[0];
     // const patternEmail = /^[a-z0-9](\.?[a-z0-9]){5,}@g(oogle)?mail\.com$/;
     // const patternPan = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
@@ -165,25 +202,28 @@ app.post(
     // }
     // const { Photo } = req.files;
     const errors = validationResult(req);
+
     // console.log(Photo);
     // console.log(errors);
-    console.log(req);
+    // console.log(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     var person = req.body;
-    console.log("photo-----", person);
+    // console.log("photo-----", person);
     var curr_time = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
 
     // console.log(curr_time);
     // console.log(person.Name);
 
     // ${person.personId} personId,
-
+    // console.log(req.files);
+    // return;
+    // return;
     dbconnect.query(
-      `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar, Created_Time, Updated_Time) VALUES ('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}', '${curr_time}', '${curr_time}')`,
+      `INSERT INTO person (Name, Email, Pan, Mobile, Aadhar, Created_Time, Updated_Time) VALUES('${person.Name}', '${person.Email}', '${person.Pan}', '${person.Mobile}', '${person.Aadhar}', '${curr_time}', '${curr_time}')`,
       (error, results, fields) => {
         if (error) {
           return res.status(403).json({
@@ -328,6 +368,60 @@ app.put("/api/person/camera/:id", (req, res) => {
       });
     }
   );
+});
+
+//**************************************** Downloading PDF *************************************************/
+// now i have to settup -------- puppeter
+
+app.post("/api/person/download", (req, res) => {
+  const { url } = req.body;
+  // console.log("-----------", id);
+  // const url = "http://localhost:3001/" + { id };
+  console.log("url--------", url);
+
+  const webpageTopdf = async () => {
+    console.log("inside webpagetopdf-----", url);
+    const browser = await puppeteer.launch();
+    const webpage = await browser.newPage();
+    await webpage.goto(url, {
+      waitUntil: "networkidle2",
+    });
+    await webpage
+      .pdf({
+        printBackground: true,
+        // displayHeaderFooter: true,
+        path: "webpage.pdf",
+        format: "Tabloid",
+        landscape: false,
+        margin: {
+          top: "10px",
+          bottom: "10px",
+          left: "5px",
+          right: "5px",
+        },
+      })
+      .then(() => {
+        console.log("File downloaded    1");
+        return res.send(url), res.status(200);
+      })
+      .catch((e) => {
+        console.log(e);
+        res.send("error in fetching url");
+      });
+    await browser.close();
+  };
+
+  if (url) {
+    console.log("hiiiiiiiiiiii", url);
+    webpageTopdf();
+  }
+});
+
+// getiing the pdf to the frontEnd
+
+app.get("/api/person/download/fetch-pdf", (req, res) => {
+  console.log("/api/person/download/fetch-pdf hitted");
+  res.sendFile(`${__dirname}/webpage.pdf`);
 });
 
 module.exports = app;
