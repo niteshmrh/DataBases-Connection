@@ -6,14 +6,22 @@ const mysql = require("mysql");
 const moment = require("moment");
 // const multer = require("multer");
 const puppeteer = require("puppeteer");
+const hbs = require("handlebars");
+const fs = require("fs-extra");
+const path = require("path");
 
 const { body, validationResult } = require("express-validator");
+const { Template } = require("ejs");
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// const [person, setPerson] = useState([]);
+
+let person = {};
 
 // app.set("view engin", "ejs");
 // console.log("hiiiii", date);
@@ -22,13 +30,15 @@ app.use(bodyParser.urlencoded({ extended: true }));
 //   console.log(color.white("Server Connected!!!"));
 // });
 
+//
+
+//*************************** DataBase Connection ******************************************/
 const dbconnect = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
   database: "employee",
 });
-
 dbconnect.connect(() => console.log(color.white("Database Connected")));
 
 // ******************** Testing the home page that :- it gives output or not
@@ -118,6 +128,8 @@ app.get("/api/person/count/users", (req, res) => {
   );
 });
 
+//**************************************************************** */
+
 //***************  getting particular data from the sql ************************
 
 app.get("/api/person/:id", (req, res, next) => {
@@ -140,8 +152,14 @@ app.get("/api/person/:id", (req, res, next) => {
           data: null,
         });
       }
-      console.log(result);
-      // console.log("------------get method", result.Name);
+      person = result;
+      // person = JSON.stringify(result);
+      // console.log("result-----", result[0].Name);
+      // const jsonString = JSON.stringify(details);
+      // console.log("json foramte", jsonString);
+      // const details  = result;
+      // console.log("details", details[0].Name);
+      // console.log("person partucular------", person[0]);
 
       res.status(200).json({
         status: true,
@@ -370,6 +388,93 @@ app.put("/api/person/camera/:id", (req, res) => {
   );
 });
 
+//***************** PDF TEMPLATE ****************************** */
+
+const template = (person, date) => {
+  console.log("template----------", person);
+  return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+      <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  </head>
+  <body>
+      <div class="py-5">
+        <div class="container">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="border p-3 rounded">
+                  <div class="mt-3">
+                    <h1 class="mb-3 text-center">Person Information</h1>
+                    <ul class="list-group">
+                      <li class="list-group-item">
+                        <div class="justify-content-end">
+                          <img
+                            class="rounded"
+                            src=${person[0].Photo}
+                            alt="Add image"
+                            width="25%"
+                            height="35%"
+                            style="marginLeft: 150px; borderRadius: 50%;"
+                          />
+                          <span class="float-end fw-lighter text center">
+                            Image
+                          </span>
+                        </div>
+                      </li>
+                      <li class="list-group-item">
+                        ${person[0].Name}
+                        <span class="float-end fw-lighter">Name</span>
+                      </li>
+  
+                      <li class="list-group-item">
+                        ${person[0].Email}
+                        <span class="float-end fw-lighter">Email</span>
+                      </li>
+
+                      <li class="list-group-item">
+                        ${person[0].Mobile}
+                        <span class="float-end fw-lighter">Phone</span>
+                      </li>
+
+                      <li class="list-group-item">
+                        ${person[0].Pan}
+                        <span class="float-end fw-lighter">Pan </span>
+                      </li>
+  
+                      <li class="list-group-item"> 
+                        ${person[0].Aadhar}
+                        <span class="float-end fw-lighter">Aadhar</span>
+                      </li>
+  
+                      <li class="list-group-item">  
+                        ${person[0].Created_Time}
+                        <span class="float-end fw-lighter">Created On</span>
+                      </li>
+  
+                      <li class="list-group-item">
+                        ${person[0].Updated_Time}
+                        <span class="float-end fw-lighter">Updated On</span>
+                      </li>
+                    </ul>
+                  </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer><p style="position:absolute;bottom:0;right:0;" >${date}</p></footer>
+  </body>
+  </html>`;
+};
+
 //**************************************** Downloading PDF *************************************************/
 // now i have to settup -------- puppeter
 
@@ -377,21 +482,28 @@ app.post("/api/person/download", (req, res) => {
   const { url } = req.body;
   // console.log("-----------", id);
   // const url = "http://localhost:3001/" + { id };
-  console.log("url--------", url);
+  // console.log("url--------", url);
+  console.log("details in pdf download------", person[0].Name);
 
   const webpageTopdf = async () => {
-    console.log("inside webpagetopdf-----", url);
+    // console.log("inside webpagetopdf-----", url);
     const browser = await puppeteer.launch();
     const webpage = await browser.newPage();
-    await webpage.goto(url, {
-      waitUntil: "networkidle0",
-    });
+    const date = new Date();
+    const content = template(person, date.toUTCString());
+    await webpage.setContent(content, { waitUntil: "domcontentloaded" });
+
+    // await webpage.goto(url, {
+    //   waitUntil: "domcontentloaded",
+    // });
+
     await webpage
       .pdf({
         printBackground: true,
-        // displayHeaderFooter: true,
+        displayHeaderFooter: true,
         path: "webpage.pdf",
         format: "Tabloid",
+        // format: "A4",
         landscape: false,
         margin: {
           top: "10px",
@@ -413,14 +525,15 @@ app.post("/api/person/download", (req, res) => {
 
   if (url) {
     console.log("hiiiiiiiiiiii", url);
+    // console.log("body -----", req.body);
     webpageTopdf();
   }
 });
 
-// getiing the pdf to the frontEnd
+// Sending the pdf to the frontEnd
 
 app.get("/api/person/download/fetch-pdf", (req, res) => {
-  console.log("/api/person/download/fetch-pdf hitted");
+  // console.log("/api/person/download/fetch-pdf hitted");
   res.sendFile(`${__dirname}/webpage.pdf`);
 });
 
