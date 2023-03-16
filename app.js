@@ -9,6 +9,7 @@ const puppeteer = require("puppeteer");
 const hbs = require("handlebars");
 const fs = require("fs-extra");
 const path = require("path");
+var qpdf = require("node-qpdf");
 
 const { body, validationResult } = require("express-validator");
 const { Template } = require("ejs");
@@ -47,7 +48,7 @@ app.get("/", (req, res, next) => {
   res.send("Testing............................");
 });
 
-//************** multer ******************************** */
+//************** multer  for file input******************************** */
 
 // const storage = multer.diskStorage({
 //   destination: (req, res, cb) => {
@@ -497,6 +498,11 @@ app.post("/api/person/download", (req, res) => {
     //   waitUntil: "domcontentloaded",
     // });
 
+    // var options = {
+    //   keyLength: 128,
+    //   password: "123456",
+    // };
+
     await webpage
       .pdf({
         printBackground: true,
@@ -514,6 +520,7 @@ app.post("/api/person/download", (req, res) => {
       })
       .then(() => {
         console.log("File downloaded    1");
+        // qpdf.encrypt("webpage.pdf", options);
         return res.send(url), res.status(200);
       })
       .catch((e) => {
